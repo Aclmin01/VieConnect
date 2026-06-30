@@ -1,0 +1,2303 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VieConnect - Chat người lạ</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%2314b8a6'/%3E%3Cstop offset='1' stop-color='%23f43f5e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='18' fill='%2307131f'/%3E%3Cpath d='M17 20c0-5 4-9 9-9h12c8 0 14 6 14 14s-6 14-14 14h-6L20 51v-12c-2-1-3-2-3-4V20z' fill='url(%23g)'/%3E%3Ccircle cx='28' cy='25' r='3' fill='white'/%3E%3Ccircle cx='39' cy='25' r='3' fill='white'/%3E%3Cpath d='M27 33c4 3 8 3 12 0' stroke='white' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+    
+    :root { --accent: 20 184 166; }
+    
+    body { 
+      font-family: 'Be Vietnam Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+      background: #0a0c1f;
+      color: #e0f2fe;
+      min-height: 100vh;
+    }
+    .font-display { font-family: 'Plus Jakarta Sans', 'Be Vietnam Pro', system-ui, sans-serif; }
+    
+    .vie-bg { background: #0a0c1f; }
+    .chat-bg { background: #0f172a; }
+
+    /* Fresh Dark Neon Theme - Rebuilt */
+    .neon-bg {
+      background: #0a0c1f;
+      background-image: 
+        radial-gradient(circle at 20% 30%, rgba(103, 232, 249, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(244, 114, 182, 0.06) 0%, transparent 55%);
+    }
+
+    .neon-card {
+      background: #111827;
+      border: 1px solid #334155;
+      box-shadow: 0 0 25px rgba(103, 232, 249, 0.15);
+    }
+
+    .neon-btn {
+      background: linear-gradient(90deg, #67e8f9, #f472b6);
+      color: #0a0c1f;
+      font-weight: 700;
+      box-shadow: 0 0 20px #67e8f9;
+      transition: all 0.2s ease;
+    }
+    .neon-btn:hover {
+      box-shadow: 0 0 35px #f472b6;
+      transform: translateY(-2px);
+    }
+
+    .gender-card {
+      background: #1e2937;
+      border: 2px solid #475569;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .gender-card:hover {
+      border-color: #67e8f9;
+      box-shadow: 0 0 15px rgba(103, 232, 249, 0.3);
+    }
+    .gender-card.active {
+      border-color: #67e8f9;
+      background: #164e63;
+      box-shadow: 0 0 20px rgba(103, 232, 249, 0.5);
+    }
+
+    .pref-pill {
+      background: #1e2937;
+      border: 1px solid #475569;
+      transition: all 0.1s ease;
+    }
+    .pref-pill:hover {
+      border-color: #67e8f9;
+    }
+    .pref-pill.active {
+      border-color: #67e8f9;
+      color: #67e8f9;
+      background: #164e63;
+    }
+
+    .interest-tag {
+      background: #1e2937;
+      border: 1px solid #67e8f9;
+      color: #67e8f9;
+      font-size: 0.8rem;
+    }
+
+    .neon-input {
+      background: #1e2937;
+      border: 1px solid #475569;
+      color: #e0f2fe;
+    }
+    .neon-input:focus {
+      border-color: #67e8f9;
+      box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.2);
+      outline: none;
+    }
+
+    /* Ensure no white areas */
+    .full-dark {
+      background: #0a0c1f;
+    }
+
+    /* Chat only scroll */
+    .chat-view {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    /* Full width chat area - chat scroll strictly inside messages */
+    /* Chat fullscreen: hide site header + landing/waiting, give chat full control */
+    body.chat-fullscreen header {
+      display: none !important;
+    }
+    body.chat-fullscreen #screen-landing,
+    body.chat-fullscreen #screen-waiting {
+      display: none !important;
+    }
+
+    body.chat-fullscreen #screen-chat {
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      height: 100vh !important;
+      display: block !important;
+    }
+    body.chat-fullscreen .chat-shell {
+      height: 100vh !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    
+    /* Old bubble styles removed - using modern inline + style picker in chat */
+    
+    .chat-container {
+      scrollbar-width: thin;
+      scrollbar-color: #334155 #1e2937;
+    }
+    
+    .nav-active {
+      background: rgba(20, 184, 166, 0.1);
+      color: #14b8a6;
+      border-radius: 9999px;
+    }
+
+    .stranger-card {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+    }
+
+    .waiting-pulse {
+      animation: waitingPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    .match-transition {
+      animation: matchPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @keyframes waitingPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    
+    @keyframes matchPop {
+      0% { transform: scale(0.7) translateY(30px); opacity: 0; }
+      70% { transform: scale(1.05); }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
+
+    .gender-btn {
+      transition: all 0.1s ease;
+    }
+    
+    .gender-btn.active {
+      border-color: #67e8f9 !important;
+      background: rgba(103, 232, 249, 0.1) !important;
+      box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.3);
+    }
+    .preference-pill.active {
+      border-color: #67e8f9 !important;
+      background: rgba(103, 232, 249, 0.1) !important;
+    }
+
+    .msg-time {
+      font-size: 10px;
+      opacity: 0.6;
+    }
+
+    /* ========================================
+       FULL DARK NEON REDESIGN - FROM SCRATCH
+       No copied elements, no blur overlays
+       Full coverage no white areas
+    ======================================== */
+    html, body {
+      background: #0a0c1f !important;
+      min-height: 100%;
+    }
+
+    /* Strict chat scroll containment - only messages area scrolls */
+    body.chat-fullscreen,
+    body.chat-fullscreen html {
+      overflow: hidden !important;
+      height: 100% !important;
+    }
+
+    #messages-container {
+      flex: 1 1 0 !important;
+      min-height: 0 !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Ensure outer chat never scrolls the page */
+    #screen-chat {
+      overflow: hidden !important;
+    }
+    body.chat-fullscreen #main-container {
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      height: 100vh !important;
+    }
+
+    #main-container {
+      background: transparent;
+    }
+    body.show-landing #main-container {
+      padding: 0 !important;
+      margin: 0 !important;
+      max-width: 100% !important;
+      background: #0a0c1f;
+    }
+    body:not(.chat-fullscreen) {
+      overflow-y: auto;
+    }
+
+    /* Fresh neon palette - dark everywhere */
+    .neon-dark {
+      background: #0a0c1f;
+    }
+    .neon-panel {
+      background: #111827;
+      border: 1px solid #334155;
+      box-shadow: 0 10px 40px -10px rgba(0,0,0,0.6);
+    }
+    .neon-accent {
+      color: #67e8f9;
+    }
+    .neon-pink {
+      color: #f472b6;
+    }
+
+    /* Completely new landing styles (rebuilt from scratch) */
+    #screen-landing {
+      min-height: 100vh;
+      background: #0a0c1f;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(103,232,249,0.07) 0%, transparent 48%),
+        radial-gradient(circle at 85% 80%, rgba(244,114,182,0.06) 0%, transparent 52%);
+    }
+    .ln-card {
+      background: #111827;
+      border: 1px solid #1f2a44;
+      box-shadow: 0 0 0 1px rgba(103,232,249,0.08), 0 25px 70px -20px rgba(0,0,0,0.75);
+    }
+    .ln-gender {
+      background: #0f172a;
+      border: 2px solid #334155;
+      transition: all .15s cubic-bezier(0.4,0,0.2,1);
+      cursor: pointer;
+    }
+    .ln-gender:hover {
+      border-color: #67e8f9;
+      transform: translateY(-1px);
+    }
+    .ln-gender.active {
+      border-color: #67e8f9;
+      background: #0c4a5e;
+      box-shadow: 0 0 0 3px rgba(103,232,249,0.25);
+    }
+    .ln-pill {
+      background: #0f172a;
+      border: 1px solid #334155;
+      transition: .1s ease;
+      font-weight: 600;
+    }
+    .ln-pill.active, .ln-pill:hover {
+      border-color: #67e8f9;
+      color: #67e8f9;
+    }
+    .ln-main-btn {
+      background: linear-gradient(90deg, #67e8f9, #f472b6);
+      color: #05060f;
+      font-weight: 800;
+      letter-spacing: -.02em;
+      box-shadow: 0 0 30px rgba(103,232,249,.6);
+      transition: all .2s ease;
+    }
+    .ln-main-btn:hover {
+      transform: translateY(-2px) scale(1.005);
+      box-shadow: 0 0 45px rgba(244,114,182,.65);
+    }
+    .ln-input {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #e0f2fe;
+    }
+    .ln-input:focus {
+      border-color: #67e8f9;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(103,232,249,0.12);
+    }
+    .ln-chip {
+      background: #0c4a5e;
+      border: 1px solid #67e8f9;
+      color: #67e8f9;
+      font-size: 12px;
+    }
+    .interest-chip { background:#0c4a5e; border:1px solid #67e8f9; color:#67e8f9; font-size:12px; padding:1px 8px; border-radius:999px; }
+    .ln-stat {
+      background: #0f172a;
+      border: 1px solid #1f2a44;
+    }
+
+    /* Waiting screen - rebuilt from scratch to exactly match landing neon */
+    #screen-waiting {
+      min-height: 100vh;
+      background: #0a0c1f;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(103,232,249,0.07) 0%, transparent 48%),
+        radial-gradient(circle at 85% 80%, rgba(244,114,182,0.06) 0%, transparent 52%);
+    }
+    .wt-panel {
+      background: #111827;
+      border: 1px solid #1f2a44;
+      box-shadow: 0 0 0 1px rgba(103,232,249,0.07);
+    }
+    .wt-spinner {
+      width: 68px;
+      height: 68px;
+      border: 5px solid #1f2a44;
+      border-top-color: #67e8f9;
+      border-right-color: #f472b6;
+      border-radius: 9999px;
+      animation: wtSpin 1.1s linear infinite;
+    }
+    @keyframes wtSpin { to { transform: rotate(360deg); } }
+
+    /* Kill all blur overlays globally for non-chat */
+    .no-blur {
+      backdrop-filter: none !important;
+    }
+    #screen-landing, #screen-waiting, header {
+      backdrop-filter: none !important;
+    }
+
+    /* Ensure 100% coverage, no white leaks */
+    .full-neon-cover {
+      background: #0a0c1f !important;
+    }
+
+    /* Homepage allows scrolling up/down. */
+    #screen-landing {
+      min-height: 100vh;
+      overflow: visible;
+    }
+    #screen-waiting {
+      min-height: 100vh;
+    }
+
+    body.show-landing {
+      overflow-y: auto;
+    }
+    /* When chat visible, hide the fixed ones */
+    body.chat-fullscreen #screen-landing,
+    body.chat-fullscreen #screen-waiting {
+      display: none !important;
+    }
+    /* Hide wrapper padding effects on landing/waiting modes */
+    body.show-landing #main-container,
+    #screen-landing ~ #main-container,
+    #screen-waiting ~ #main-container {
+      max-width: 100% !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    .vie-gradient {
+      background: linear-gradient(135deg, #14b8a6, #0f766e);
+    }
+
+    .chat-header {
+      background: #0f172a;
+    }
+
+    .interest-chip {
+      background: #1e2937;
+      color: #64748b;
+      padding: 2px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+
+    :root {
+      --app-bg: #07131f;
+      --panel: #0e1b2a;
+      --panel-2: #12243a;
+      --line: rgba(255,255,255,.1);
+      --muted: #9fb1c7;
+      --chat-bg: #172033;
+      --chat-dot: rgba(255,255,255,.08);
+      --chat-header: rgba(11,23,38,.9);
+      --composer: rgba(255,255,255,.12);
+      --sent: #14b8a6;
+      --sent-2: #0f766e;
+      --recv: #253247;
+      --recv-2: #172235;
+      --sent-text: #ffffff;
+      --recv-text: #f8fafc;
+      --glow: rgba(20,184,166,.3);
+    }
+
+    body {
+      background: #0a0c1f;
+      color: #e2e8f0;
+    }
+
+    .neon-bg {
+      background: #0a0c1f;
+      background-image: 
+        radial-gradient(circle at 30% 20%, rgba(103, 232, 249, 0.09) 0%, transparent 45%),
+        radial-gradient(circle at 70% 80%, rgba(244, 114, 182, 0.07) 0%, transparent 50%);
+    }
+
+    /* Legacy landing styles neutralized for fresh rebuild (kept minimal) */
+    .vie-bg { background: #0a0c1f; }
+
+    /* Body show-landing support */
+    body.show-landing #screen-waiting,
+    body.show-landing #screen-chat {
+      display: none !important;
+    }
+    body.show-landing #screen-landing {
+      display: flex !important;
+    }
+    .brand-logo { box-shadow: 0 14px 40px var(--glow); }
+    .soft-panel { background: color-mix(in srgb, var(--panel) 92%, transparent); border-color: var(--line); }
+
+    body[data-chat-theme="default"] {
+      --chat-bg: #172033; --chat-header: rgba(11,23,38,.9); --composer: rgba(255,255,255,.12);
+      --sent: #14b8a6; --sent-2: #0f766e; --recv: #253247; --recv-2: #172235; --glow: rgba(20,184,166,.3);
+      --chat-dot: rgba(255,255,255,.08);
+    }
+    body[data-chat-theme="violet"] {
+      --chat-bg: #31125a; --chat-header: rgba(68,25,119,.88); --composer: rgba(255,255,255,.14);
+      --sent: #8b5cf6; --sent-2: #6d28d9; --recv: #170f3f; --recv-2: #24105a; --glow: rgba(139,92,246,.35);
+      --chat-dot: rgba(255,255,255,.12);
+    }
+    body[data-chat-theme="ocean"] {
+      --chat-bg: #06324a; --chat-header: rgba(4,47,71,.9); --composer: rgba(255,255,255,.13);
+      --sent: #06b6d4; --sent-2: #0284c7; --recv: #0b4663; --recv-2: #083449; --glow: rgba(6,182,212,.32);
+      --chat-dot: rgba(125,211,252,.16);
+    }
+    body[data-chat-theme="sakura"] {
+      --chat-bg: #4a1933; --chat-header: rgba(92,25,54,.9); --composer: rgba(255,255,255,.16);
+      --sent: #fb7185; --sent-2: #e11d48; --recv: #62213f; --recv-2: #3f142a; --glow: rgba(251,113,133,.32);
+      --chat-dot: rgba(255,228,230,.16);
+    }
+    body[data-chat-theme="mint"] {
+      --chat-bg: #07372f; --chat-header: rgba(6,78,59,.9); --composer: rgba(255,255,255,.13);
+      --sent: #34d399; --sent-2: #059669; --recv: #134e4a; --recv-2: #083b36; --glow: rgba(52,211,153,.28);
+      --chat-dot: rgba(167,243,208,.16);
+    }
+    body[data-chat-theme="sunset"] {
+      --chat-bg: #4b1621; --chat-header: rgba(99,36,35,.9); --composer: rgba(255,255,255,.14);
+      --sent: #f97316; --sent-2: #dc2626; --recv: #6b2330; --recv-2: #431823; --glow: rgba(249,115,22,.3);
+      --chat-dot: rgba(254,215,170,.16);
+    }
+    body[data-chat-theme="cyber"] {
+      --chat-bg: #061221; --chat-header: rgba(2,8,23,.92); --composer: rgba(34,211,238,.12);
+      --sent: #22d3ee; --sent-2: #2563eb; --recv: #111827; --recv-2: #020617; --glow: rgba(34,211,238,.28);
+      --chat-dot: rgba(34,211,238,.14);
+    }
+
+    .chat-shell { background: var(--chat-bg) !important; }
+
+    /* Reinforce proper chat flex layout in fullscreen (fixes collapsed/blank area) */
+    body.chat-fullscreen .chat-shell {
+      min-height: 100vh !important;
+    }
+    body.chat-fullscreen #messages-container {
+      flex: 1 1 0% !important;
+      min-height: 0 !important;
+    }
+    .chat-container {
+      scrollbar-color: var(--sent) transparent;
+      background:
+        radial-gradient(var(--chat-dot) .7px, transparent 1px),
+        linear-gradient(180deg, color-mix(in srgb, var(--chat-bg) 96%, white), var(--chat-bg)) !important;
+      background-size: 4px 4px, 100% 100% !important;
+    }
+    .chat-header { background: var(--chat-header) !important; }
+    .composer-shell { background: color-mix(in srgb, var(--chat-header) 72%, black) !important; }
+    .composer-input { background: var(--composer) !important; }
+    .theme-dot { background: linear-gradient(135deg, var(--a), var(--b)); }
+    .picker-card {
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(15,23,42,.72);
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+    .picker-card:hover, .picker-card.active {
+      transform: translateY(-1px);
+      border-color: color-mix(in srgb, var(--sent) 72%, white);
+      background: rgba(255,255,255,.08);
+    }
+    .bubble-preview {
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .bubble {
+      position: relative;
+      width: fit-content;
+      max-width: min(78%, 620px);
+      padding: 9px 14px;
+      font-size: 15px;
+      line-height: 1.35;
+      word-break: break-word;
+      box-shadow: 0 10px 24px rgba(0,0,0,.14);
+    }
+    .bubble.self { margin-left: auto; color: var(--sent-text); }
+    .bubble.other { margin-right: auto; color: var(--recv-text); }
+    .bubble.default.self { background: linear-gradient(135deg, var(--sent), var(--sent-2)); border-radius: 18px 18px 4px 18px; }
+    .bubble.default.other { background: linear-gradient(135deg, var(--recv), var(--recv-2)); border-radius: 18px 18px 18px 4px; }
+    .bubble.glass.self { background: color-mix(in srgb, var(--sent) 78%, white); border: 1px solid rgba(255,255,255,.28); border-radius: 22px 22px 8px 22px; }
+    .bubble.glass.other { background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.14); border-radius: 22px 22px 22px 8px; }
+    .bubble.heart.self, .bubble.heart.other { border-radius: 20px; padding-left: 42px; }
+    .bubble.heart.self { background: linear-gradient(135deg, #fb7185, #e11d48); }
+    .bubble.heart.other { background: linear-gradient(135deg, #fecdd3, #f9a8d4); color: #641437; }
+    .bubble.heart::before { content: "♥"; position: absolute; left: 13px; top: 8px; font-size: 20px; color: rgba(255,255,255,.9); }
+    .bubble.cloud.self, .bubble.cloud.other { border-radius: 26px; padding-inline: 18px; }
+    .bubble.cloud.self { background: linear-gradient(135deg, #38bdf8, #0ea5e9); }
+    .bubble.cloud.other { background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: #12335f; }
+    .bubble.ribbon.self, .bubble.ribbon.other { border-radius: 10px 22px 22px 10px; border-bottom: 4px solid rgba(0,0,0,.18); }
+    .bubble.ribbon.self { background: linear-gradient(135deg, #f97316, #ef4444); }
+    .bubble.ribbon.other { background: linear-gradient(135deg, #fde68a, #f59e0b); color: #422006; }
+    .bubble.neon.self, .bubble.neon.other { background: #020617; border: 1px solid #22d3ee; color: #a5f3fc; border-radius: 18px; box-shadow: 0 0 18px rgba(34,211,238,.25); }
+    .bubble.soft.self { background: linear-gradient(135deg, #a78bfa, #ec4899); border-radius: 24px 24px 7px 24px; }
+    .bubble.soft.other { background: linear-gradient(135deg, #f5d0fe, #fecdd3); color: #581c87; border-radius: 24px 24px 24px 7px; }
+    .bubble.like.self, .bubble.like.other { border-radius: 14px; padding-left: 44px; }
+    .bubble.like.self { background: linear-gradient(135deg, #facc15, #f97316); color: #3b1d00; }
+    .bubble.like.other { background: linear-gradient(135deg, #fef3c7, #fde68a); color: #422006; }
+    .bubble.like::before { content: "👍"; position: absolute; left: 11px; top: 7px; font-size: 22px; }
+    .bubble-time { text-align: right; font-size: 10px; opacity: .68; margin-top: 2px; }
+
+    /* Refined 2026 UI pass: calmer surfaces, better Vietnamese typography, less visual noise. */
+    * { letter-spacing: 0 !important; }
+    html, body {
+      font-family: 'Be Vietnam Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+    }
+    #screen-landing, #screen-waiting {
+      background: linear-gradient(180deg, #08111d 0%, #0d1724 48%, #101827 100%) !important;
+    }
+    .ln-card, .wt-panel, .neon-panel {
+      background: rgba(15, 23, 42, .94) !important;
+      border: 1px solid rgba(148, 163, 184, .16) !important;
+      box-shadow: 0 22px 70px rgba(2, 6, 23, .44) !important;
+      border-radius: 22px !important;
+    }
+    .ln-stat, .ln-input, .ln-gender, .ln-pill, #avatar-grid {
+      background: rgba(15, 23, 42, .78) !important;
+      border-color: rgba(148, 163, 184, .18) !important;
+      box-shadow: none !important;
+    }
+    .ln-gender:hover, .ln-gender.active, .ln-pill.active, .ln-pill:hover {
+      border-color: rgba(45, 212, 191, .75) !important;
+      background: rgba(20, 184, 166, .12) !important;
+    }
+    .ln-main-btn {
+      background: linear-gradient(135deg, #2dd4bf, #38bdf8 56%, #fb7185) !important;
+      box-shadow: 0 18px 38px rgba(20, 184, 166, .22) !important;
+      border-radius: 16px !important;
+    }
+    .ln-main-btn:hover {
+      transform: translateY(-1px) !important;
+      box-shadow: 0 22px 44px rgba(56, 189, 248, .22) !important;
+    }
+    .chat-header {
+      background: rgba(15, 23, 42, .96) !important;
+      border-bottom-color: rgba(148, 163, 184, .14) !important;
+    }
+    .chat-header > .flex.items-center.gap-x-3.text-xl > i {
+      display: none !important;
+    }
+    button[onclick="showChatInfoPanel()"] {
+      font-size: 0 !important;
+    }
+    button[onclick="showChatInfoPanel()"]::before {
+      content: "\f05a";
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      font-size: 14px;
+    }
+    .chat-container {
+      background:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(180deg, color-mix(in srgb, var(--chat-bg) 94%, #0f172a), var(--chat-bg)) !important;
+      background-size: 28px 28px, 28px 28px, 100% 100% !important;
+    }
+    .composer-shell {
+      background: rgba(15, 23, 42, .96) !important;
+      border-top-color: rgba(148, 163, 184, .14) !important;
+    }
+    .composer-input {
+      background: rgba(255,255,255,.1) !important;
+      border: 1px solid rgba(255,255,255,.1);
+      min-height: 46px;
+    }
+    .bubble {
+      border-radius: 18px !important;
+      line-height: 1.48 !important;
+      box-shadow: 0 10px 26px rgba(2, 6, 23, .2) !important;
+    }
+    .bubble.self {
+      background: linear-gradient(135deg, #14b8a6, #0ea5e9) !important;
+    }
+    .bubble.other {
+      background: rgba(30, 41, 59, .95) !important;
+      border: 1px solid rgba(148, 163, 184, .12);
+    }
+    #toast {
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 18px 50px rgba(2, 6, 23, .35);
+    }
+
+    @media (max-width: 640px) {
+      header .max-w-5xl { padding-inline: 14px; height: 58px; }
+      body.chat-fullscreen .chat-shell { height: 100vh !important; }
+      .bubble { max-width: 86%; font-size: 14px; }
+      #style-picker-modal .picker-inner { max-height: 86vh; overflow: auto; }
+      .chat-header { padding-inline: 10px !important; }
+    }
+  </style>
+</head>
+<body class="vie-bg text-slate-200 min-h-screen full-neon-cover">
+  <!-- HEADER -->
+  <header class="border-b border-white/10 bg-[#05060f] sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-x-3">
+        <div class="relative w-9 h-9 flex items-center justify-center">
+          <!-- NEW NEON LOGO -->
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <defs>
+              <linearGradient id="hLogo" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#67e8f9"/>
+                <stop offset="50%" stop-color="#a78bfa"/>
+                <stop offset="100%" stop-color="#f472b6"/>
+              </linearGradient>
+            </defs>
+            <rect x="3" y="3" width="30" height="30" rx="9" fill="#0a0c1f" stroke="url(#hLogo)" stroke-width="2.5"/>
+            <path d="M12 12 L18 22 L24 12" stroke="#67e8f9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="14" cy="26" r="2.2" fill="#f472b6"/>
+            <circle cx="22" cy="26" r="2.2" fill="#67e8f9"/>
+          </svg>
+        </div>
+        <div>
+          <span class="font-display text-2xl sm:text-3xl font-semibold tracking-tighter">VieConnect</span>
+          <span class="ml-3 text-sm text-[#64748b] hidden md:inline">Cập nhật từng giây, chạm tay từng nhịp.</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-x-4">
+        <!-- Live Stats -->
+        <div class="hidden md:flex items-center gap-x-2 text-sm px-4 py-1.5 bg-[#111827] rounded-3xl border border-[#334155]">
+          <div class="flex items-center gap-x-1.5">
+            <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+            <span id="online-count" class="font-semibold text-emerald-400">0</span>
+            <span class="text-[#64748b]">trực tuyến</span>
+          </div>
+          <div class="w-px h-3 bg-[#334155]"></div>
+          <span id="active-chats" class="text-[#64748b]"><span class="font-semibold text-white">0</span> đang chat</span>
+        </div>
+
+        <button onclick="showAdminLogin()" 
+                class="hidden px-4 py-1.5 text-xs rounded-3xl border border-[#334155] flex items-center gap-x-2">
+          <i class="fa-solid fa-shield-halved"></i>
+          <span class="hidden sm:inline">Quản trị</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Container: full width override for neon landing + waiting, contained for chat -->
+  <div id="main-container" class="max-w-5xl mx-auto px-4 pt-6 pb-12">
+    
+    <!-- LANDING PAGE - COMPLETELY REBUILT FROM SCRATCH IN DARK NEON -->
+    <!-- Fresh UX: centered prominent search, new logo, no copied elements, full neon cover -->
+    <div id="screen-landing" class="full-neon-cover min-h-screen flex items-center justify-center p-5">
+      <div class="w-full max-w-xl pt-4">
+        <!-- Central neon panel - completely new structure -->
+        <div class="ln-card rounded-3xl px-8 py-8">
+          <!-- Live counters centered prominent -->
+          <div class="flex justify-center gap-8 mb-7 text-sm">
+            <div class="ln-stat px-5 py-2 rounded-2xl flex items-center gap-2 text-center">
+              <div class="text-[#67e8f9] text-xl font-extrabold" id="landing-online-count">0</div>
+              <div class="text-[10px] uppercase tracking-widest text-[#64748b]">người<br>trực tuyến</div>
+            </div>
+            <div class="ln-stat px-5 py-2 rounded-2xl flex items-center gap-2 text-center">
+              <div class="text-[#f472b6] text-xl font-extrabold" id="landing-active-count">0</div>
+              <div class="text-[10px] uppercase tracking-widest text-[#64748b]">cuộc<br>đang chat</div>
+            </div>
+          </div>
+
+          <div class="mb-5">
+            <div class="text-xs text-[#64748b] mb-1 text-center">TÊN HIỂN THỊ (TÙY CHỌN)</div>
+            <input id="display-name" type="text" class="ln-input w-full px-4 py-2 text-sm rounded-2xl" placeholder="Nhập tên (để trống sẽ random)">
+          </div>
+
+          <!-- Avatar selector - 30 cartoon presets -->
+          <div class="mb-5">
+            <div class="text-xs text-[#64748b] mb-1 text-center">CHỌN AVATAR HOẠT HÌNH</div>
+            <div id="avatar-selector" class="text-xs">
+              <div class="flex gap-1 mb-1 justify-center">
+                <button type="button" onclick="showAvatarCategory('humanMale')" class="px-2 py-0.5 bg-[#1e2937] rounded">Người Nam (5)</button>
+                <button type="button" onclick="showAvatarCategory('humanFemale')" class="px-2 py-0.5 bg-[#1e2937] rounded">Người Nữ (5)</button>
+                <button type="button" onclick="showAvatarCategory('animal')" class="px-2 py-0.5 bg-[#1e2937] rounded">Động vật (10)</button>
+                <button type="button" onclick="showAvatarCategory('various')" class="px-2 py-0.5 bg-[#1e2937] rounded">Nhân vật (10)</button>
+              </div>
+              <div id="avatar-grid" class="grid grid-cols-5 gap-1 max-h-20 overflow-auto p-1 bg-[#0f172a] rounded"></div>
+              <div class="text-center mt-1">
+                <img id="avatar-preview" class="w-10 h-10 mx-auto rounded-full border border-[#67e8f9]" style="display:none">
+                <span id="avatar-selected" class="text-[10px] text-[#64748b]"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-7">
+            <div class="uppercase text-[10px] tracking-[2px] text-[#64748b] mb-3 text-center">BẠN LÀ</div>
+            <div class="grid grid-cols-2 gap-4">
+              <button id="gender-male" onclick="selectGender('male')" class="ln-gender rounded-3xl py-5 px-4 flex flex-col items-center">
+                <i class="fa-solid fa-mars text-4xl text-[#67e8f9]"></i>
+                <span class="font-semibold mt-2.5 tracking-tight">NAM</span>
+              </button>
+              <button id="gender-female" onclick="selectGender('female')" class="ln-gender rounded-3xl py-5 px-4 flex flex-col items-center">
+                <i class="fa-solid fa-venus text-4xl text-[#f472b6]"></i>
+                <span class="font-semibold mt-2.5 tracking-tight">NỮ</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="mb-7">
+            <div class="uppercase text-[10px] tracking-[2px] text-[#64748b] mb-3 text-center">MUỐN TRÒ CHUYỆN VỚI</div>
+            <div class="flex gap-3 justify-center">
+              <button id="look-male" onclick="selectLookingFor('male')" class="ln-pill px-8 py-2.5 rounded-2xl text-sm">NAM</button>
+              <button id="look-female" onclick="selectLookingFor('female')" class="ln-pill px-8 py-2.5 rounded-2xl text-sm">NỮ</button>
+              <button id="look-both" onclick="selectLookingFor('both')" class="ln-pill px-8 py-2.5 rounded-2xl text-sm">BẤT KỲ</button>
+            </div>
+          </div>
+
+          <div class="mb-8">
+            <div class="uppercase text-[10px] tracking-[2px] text-[#64748b] mb-2 text-center">SỞ THÍCH CÁ NHÂN (TÙY CHỌN)</div>
+            <div class="flex gap-3">
+              <input id="interest-input" type="text" class="ln-input flex-1 px-4 py-2.5 text-sm rounded-2xl" placeholder="ví dụ: game, âm nhạc, du lịch">
+              <button onclick="addInterest()" class="px-6 rounded-2xl bg-[#1e2937] text-[#67e8f9] text-sm font-medium hover:bg-[#334155]">THÊM</button>
+            </div>
+            <div id="interest-chips" class="flex flex-wrap gap-1.5 mt-3 min-h-[26px]"></div>
+          </div>
+
+          <!-- CENTERED SEARCH - the main action -->
+          <button onclick="startSearching()" 
+                  class="ln-main-btn w-full py-[17px] text-[15px] tracking-[0.5px] rounded-3xl flex items-center justify-center gap-3 shadow-2xl">
+            <i class="fa-solid fa-search text-base"></i> 
+            <span class="font-extrabold">TÌM NGƯỜI CHAT NGAY</span>
+          </button>
+        </div>
+
+        <div class="mt-4 text-center text-xs text-[#475569]">Hoàn toàn ẩn danh • Kết nối tức thì • Không lưu trữ</div>
+      </div>
+    </div>
+
+    <!-- WAITING / SEARCH SCREEN - REBUILT FROM SCRATCH, MATCH LANDING NEON EXACTLY -->
+    <!-- Top-left logo, full dark neon bg, no blur, no white, centered clean panel -->
+    <div id="screen-waiting" class="hidden full-neon-cover">
+      <!-- Top left logo only (per requirement) -->
+      <div class="px-6 py-5">
+        <div class="flex items-center gap-3">
+          <!-- IDENTICAL NEW LOGO -->
+          <svg width="36" height="36" viewBox="0 0 58 58" fill="none">
+            <defs>
+              <linearGradient id="wtLogo" x1="8" y1="8" x2="50" y2="50">
+                <stop offset="0%" stop-color="#67e8f9"/>
+                <stop offset="45%" stop-color="#a78bfa"/>
+                <stop offset="100%" stop-color="#f472b6"/>
+              </linearGradient>
+            </defs>
+            <rect x="5" y="5" width="48" height="48" rx="14" fill="#0a0c1f" stroke="url(#wtLogo)" stroke-width="3.5"/>
+            <path d="M17 19 L29 35 L41 19" stroke="#67e8f9" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="22" cy="43" r="3.5" fill="#f472b6"/>
+            <circle cx="36" cy="43" r="3.5" fill="#67e8f9"/>
+          </svg>
+          <span class="font-display text-[26px] font-semibold tracking-tighter text-white">VieConnect</span>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-center min-h-[calc(100vh-82px)] px-5">
+        <div class="wt-panel w-full max-w-sm rounded-3xl px-8 py-10 text-center">
+          <!-- Fresh spinner design -->
+          <div class="mx-auto mb-8 relative w-16 h-16 flex items-center justify-center">
+            <div class="wt-spinner"></div>
+            <div class="absolute w-3.5 h-3.5 bg-[#67e8f9] rounded-full"></div>
+          </div>
+
+          <div class="text-[22px] leading-tight font-semibold tracking-tight text-white mb-1.5">Đang tìm đối tác phù hợp</div>
+          <p id="waiting-text" class="text-[#64748b] text-[15px] mb-8">Kết nối ẩn danh ngay bây giờ...</p>
+
+          <div class="inline-block px-6 py-2.5 rounded-2xl bg-[#0f172a] border border-[#1f2a44] text-sm">
+            <span class="text-[#64748b]">Đang chờ: </span>
+            <span id="waiting-count" class="font-extrabold text-[#67e8f9]">0</span>
+          </div>
+
+          <div class="mt-8">
+            <button onclick="cancelSearch()" 
+                    class="text-sm px-6 py-2 text-[#64748b] hover:text-[#94a3b8] rounded-xl border border-[#1f2a44] hover:border-[#334155] inline-flex items-center gap-2">
+              <i class="fa-solid fa-arrow-left text-xs"></i>
+              <span>THOÁT TÌM KIẾM</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHAT SCREEN - Full screen mobile style like reference -->
+    <div id="screen-chat" class="hidden">
+      <div class="chat-shell flex flex-col h-full text-white overflow-hidden">
+        
+        <!-- Messenger-style Header with logo top-left -->
+        <div class="chat-header px-4 py-3 flex items-center gap-3 border-b border-white/10 bg-[#0f172a]">
+          <!-- Logo top left -->
+          <div class="flex items-center gap-2 mr-2">
+            <div class="relative w-8 h-8 flex items-center justify-center">
+              <!-- NEW NEON LOGO (structure of chat UI unchanged) -->
+              <svg width="32" height="32" viewBox="0 0 58 58" fill="none">
+                <defs>
+                  <linearGradient id="chatLogo" x1="8" y1="8" x2="50" y2="50">
+                    <stop offset="0%" stop-color="#67e8f9"/>
+                    <stop offset="45%" stop-color="#a78bfa"/>
+                    <stop offset="100%" stop-color="#f472b6"/>
+                  </linearGradient>
+                </defs>
+                <rect x="5" y="5" width="48" height="48" rx="14" fill="#0a0c1f" stroke="url(#chatLogo)" stroke-width="3.5"/>
+                <path d="M17 19 L29 35 L41 19" stroke="#67e8f9" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="22" cy="43" r="3.5" fill="#f472b6"/>
+                <circle cx="36" cy="43" r="3.5" fill="#67e8f9"/>
+              </svg>
+            </div>
+            <span class="font-display text-lg font-semibold tracking-[-0.5px]">VieConnect</span>
+          </div>
+
+          <button onclick="leaveChat()" class="text-white/90 hover:text-white px-1">
+            <i class="fa-solid fa-chevron-left text-2xl"></i>
+          </button>
+
+          <div class="flex items-center gap-3 flex-1 min-w-0">
+            <div id="partner-avatar" class="w-9 h-9 rounded-full overflow-hidden border border-white/30 flex-shrink-0">
+              <!-- avatar img set in JS -->
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <span id="partner-name" class="font-semibold text-[17px] truncate"></span>
+              </div>
+              <div class="text-[12px] text-emerald-300 flex items-center gap-1">
+                <span id="partner-status">Đang hoạt động</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-x-3 text-xl">
+            <i class="fa-solid fa-phone text-white/90 hover:text-white cursor-pointer"></i>
+            <i class="fa-solid fa-video text-white/90 hover:text-white cursor-pointer"></i>
+            
+            <!-- Keep core actions compact -->
+            <div class="flex items-center gap-1 ml-2 text-xs">
+              <button onclick="nextPerson()" class="px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-full text-[10px] font-medium">Đổi</button>
+              <button onclick="showBubbleStylePicker()" class="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center" title="Giao diện"><i class="fa-solid fa-palette text-sm"></i></button>
+              <!-- Settings circle: self + partner info -->
+              <button onclick="showChatInfoPanel()" class="w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center" title="Thông tin chat">⭕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Messages Area (full screen) -->
+        <div id="messages-container" 
+             class="chat-container flex-1 overflow-y-auto px-4 pt-4 pb-3 space-y-2 flex flex-col">
+          <!-- Messages injected here by JS -->
+        </div>
+        <div id="typing-indicator" class="hidden px-5 pb-2 text-xs text-white/70"></div>
+
+        <!-- Bottom Bar (Messenger style) -->
+        <div class="composer-shell px-3 py-2 border-t border-white/10">
+          <!-- Quick reactions row (like the image) -->
+          <div class="flex items-center gap-1 mb-2 px-1">
+            <div onclick="sendReaction('❤️')" class="px-2.5 py-1 bg-white/10 rounded-full text-sm cursor-pointer hover:bg-white/20">❤️</div>
+            <div onclick="sendReaction('😂')" class="px-2.5 py-1 bg-white/10 rounded-full text-sm cursor-pointer hover:bg-white/20">😂</div>
+            <div onclick="sendReaction('😮')" class="px-2.5 py-1 bg-white/10 rounded-full text-sm cursor-pointer hover:bg-white/20">😮</div>
+            <div onclick="sendReaction('👍')" class="px-2.5 py-1 bg-white/10 rounded-full text-sm cursor-pointer hover:bg-white/20">👍</div>
+            <div onclick="sendIcebreaker()" class="px-2.5 py-1 bg-white/10 rounded-full text-xs cursor-pointer hover:bg-white/20">💡</div>
+            <div class="flex-1"></div>
+            <button onclick="nextPerson()" class="text-[10px] px-3 py-1 bg-white/10 hover:bg-white/20 rounded-full font-medium">Người khác</button>
+          </div>
+
+          <!-- Input bar -->
+          <div class="composer-input flex items-center gap-2 rounded-3xl px-3 py-1">
+            <button class="text-xl px-1 text-white/70">😊</button>
+            <input id="message-input" type="text" placeholder="Nhập tin nhắn..." 
+                   class="flex-1 bg-transparent outline-none text-white placeholder-white/60 py-2 text-[15px]"
+                   onkeydown="if (event.key === 'Enter') sendMessage()">
+            
+            <button onclick="sendMessage()" 
+                    class="w-9 h-9 flex items-center justify-center text-teal-300 hover:text-teal-200">
+              <i class="fa-solid fa-paper-plane text-xl"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ADMIN MODAL -->
+  <div id="admin-modal" class="hidden fixed inset-0 bg-black/80 z-[100] flex items-center justify-center">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-4xl mx-3 p-6 max-h-[90vh] overflow-auto">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <span class="font-bold text-xl">Bảng quản trị VieConnect</span>
+          <span class="ml-2 text-xs px-2 py-0.5 rounded bg-red-600">ADMIN</span>
+        </div>
+        <button onclick="closeAdminModal()" class="text-2xl text-slate-400 hover:text-white">×</button>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl">
+          <div class="text-xs text-slate-400">Người trực tuyến</div>
+          <div id="admin-online" class="text-4xl font-bold">0</div>
+        </div>
+        <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl">
+          <div class="text-xs text-slate-400">Đang chờ</div>
+          <div id="admin-waiting" class="text-4xl font-bold">0</div>
+        </div>
+        <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl">
+          <div class="text-xs text-slate-400">Phòng chat</div>
+          <div id="admin-chats" class="text-4xl font-bold">0</div>
+        </div>
+        <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl">
+          <div class="text-xs text-slate-400">Lượt ghép</div>
+          <div id="admin-matches" class="text-4xl font-bold">0</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Waiting -->
+        <div>
+          <div class="font-semibold mb-2 text-sm">Người đang chờ</div>
+          <div id="admin-waiting-list" class="space-y-2 bg-slate-950 border border-slate-800 rounded-2xl p-3 text-sm max-h-72 overflow-auto"></div>
+        </div>
+
+        <!-- Active Rooms -->
+        <div>
+          <div class="font-semibold mb-2 text-sm flex justify-between">
+            <span>Phòng đang chat</span>
+            <button onclick="adminBroadcast()" class="text-xs px-3 rounded-xl bg-red-900/40 hover:bg-red-800">Thông báo</button>
+          </div>
+          <div id="admin-rooms-list" class="space-y-2 bg-slate-950 border border-slate-800 rounded-2xl p-3 text-sm max-h-72 overflow-auto"></div>
+        </div>
+      </div>
+
+      <!-- Reports -->
+      <div class="mt-4">
+        <div class="font-semibold mb-2 text-sm">Báo cáo gần đây</div>
+        <div id="admin-reports-list" class="space-y-1 bg-slate-950 border border-slate-800 rounded-2xl p-3 text-xs max-h-40 overflow-auto text-amber-300"></div>
+      </div>
+
+      <div class="mt-4 text-xs text-slate-400">Khu vực quản trị bảo vệ bằng mật khẩu.</div>
+    </div>
+  </div>
+
+  <!-- Matching Info Modal -->
+  <div id="matching-info-modal" onclick="if (event.target.id === 'matching-info-modal') hideMatchingInfo()" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[110]">
+    <div onclick="event.stopImmediatePropagation()" class="bg-slate-900 border border-slate-700 rounded-3xl max-w-md mx-4 p-6">
+      <div class="flex justify-between items-center mb-4">
+        <div class="font-semibold text-lg">Quy tắc ghép đôi</div>
+        <button onclick="hideMatchingInfo()" class="text-2xl leading-none text-slate-400">×</button>
+      </div>
+      <div class="text-sm space-y-3 text-slate-300">
+        <p><strong>1. Hợp gu hai chiều</strong><br>Cả hai phải khớp lựa chọn Nam/Nữ/Bất kỳ.</p>
+        <p><strong>2. Ưu tiên vibe</strong><br>Sở thích giống nhau và thời gian chờ được tính khi ghép.</p>
+        <p><strong>3. Phòng riêng</strong><br>Mỗi cặp có một phòng chat riêng.</p>
+        <p><strong>4. Chủ động rời phòng</strong><br>Bấm đổi người hoặc thoát bất cứ lúc nào.</p>
+      </div>
+      <div class="mt-5 text-center">
+        <button onclick="hideMatchingInfo()" class="px-6 py-2 text-sm rounded-3xl bg-teal-400 text-black font-semibold">Đã hiểu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Theme + Bubble Picker -->
+  <div id="style-picker-modal" onclick="if (event.target.id === 'style-picker-modal') hideBubbleStylePicker()" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[120]">
+    <div onclick="event.stopImmediatePropagation()" class="picker-inner bg-slate-950/95 border border-white/10 rounded-3xl w-full max-w-2xl mx-3 p-5 shadow-2xl">
+      <div class="flex items-center justify-between mb-5 px-1">
+        <div>
+          <div class="font-semibold text-lg">Giao diện chat</div>
+          <div class="text-xs text-slate-400">Đổi chủ đề nền và kiểu bong bóng</div>
+        </div>
+        <button onclick="hideBubbleStylePicker()" class="w-9 h-9 rounded-full bg-white/10 text-xl leading-none text-slate-300 hover:text-white">×</button>
+      </div>
+
+      <div class="mb-5">
+        <div class="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Chủ đề</div>
+        <div id="theme-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+      </div>
+
+      <div>
+        <div class="text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Bong bóng</div>
+        <div id="bubble-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 text-sm px-6 py-3 rounded-3xl shadow-xl"></div>
+
+  <script>
+    // ==================== VIE CONNECT CLIENT ====================
+    const socket = io();
+    
+    let currentUser = { gender: null, lookingFor: null, interests: [], name: null, avatarUrl: null };
+
+    // Pre-researched cartoon avatars (all SVG from DiceBear for reliability)
+    const avatarPresets = {
+      humanMale: [
+        'https://api.dicebear.com/7.x/adventurer/svg?seed=man1',
+        'https://api.dicebear.com/7.x/adventurer/svg?seed=alex',
+        'https://api.dicebear.com/7.x/adventurer/svg?seed=max',
+        'https://api.dicebear.com/7.x/adventurer/svg?seed=leo',
+        'https://api.dicebear.com/7.x/adventurer/svg?seed=james'
+      ],
+      humanFemale: [
+        'https://api.dicebear.com/7.x/lorelei/svg?seed=woman1',
+        'https://api.dicebear.com/7.x/lorelei/svg?seed=anna',
+        'https://api.dicebear.com/7.x/lorelei/svg?seed=emma',
+        'https://api.dicebear.com/7.x/lorelei/svg?seed=lisa',
+        'https://api.dicebear.com/7.x/lorelei/svg?seed=sophia'
+      ],
+      animal: [
+        'https://api.dicebear.com/7.x/bottts/svg?seed=cat',
+        'https://api.dicebear.com/7.x/bottts/svg?seed=dog',
+        'https://api.dicebear.com/7.x/bottts/svg?seed=rabbit',
+        'https://api.dicebear.com/7.x/bottts/svg?seed=bear',
+        'https://api.dicebear.com/7.x/bottts/svg?seed=fox',
+        'https://api.dicebear.com/7.x/bottts/svg?seed=owl',
+        'https://api.dicebear.com/7.x/bottts/svg?seed=panda',
+        'https://api.dicebear.com/7.x/bottts/svg?seed=monkey',
+        'https://api.dicebear.com/7.x/bottts/svg?seed=tiger',
+        'https://api.dicebear.com/7.x/bottts/svg?seed=koala'
+      ],
+      various: [
+        'https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=hero',
+        'https://api.dicebear.com/7.x/big-smile/svg?seed=fun',
+        'https://api.dicebear.com/7.x/pixel-art/svg?seed=pixel',
+        'https://api.dicebear.com/7.x/personas/svg?seed=char1',
+        'https://api.dicebear.com/7.x/open-peeps/svg?seed=peep',
+        'https://api.dicebear.com/7.x/notionists/svg?seed=noti',
+        'https://api.dicebear.com/7.x/micah/svg?seed=mic',
+        'https://api.dicebear.com/7.x/shapes/svg?seed=shape',
+        'https://api.dicebear.com/7.x/identicon/svg?seed=id',
+        'https://api.dicebear.com/7.x/rings/svg?seed=ring'
+      ]
+    };
+
+    let selectedAvatarUrl = null;
+
+    function showAvatarCategory(category) {
+      const grid = document.getElementById('avatar-grid');
+      grid.innerHTML = '';
+      const list = avatarPresets[category] || [];
+      list.forEach((url, idx) => {
+        const img = document.createElement('img');
+        img.src = url;
+        img.className = 'w-10 h-10 rounded-full cursor-pointer border border-transparent hover:border-[#67e8f9]';
+        img.onclick = () => {
+          selectedAvatarUrl = url;
+          currentUser.avatarUrl = url;
+          document.getElementById('avatar-preview').src = url;
+          document.getElementById('avatar-preview').style.display = 'block';
+          document.getElementById('avatar-selected').textContent = 'Đã chọn';
+          // highlight
+          grid.querySelectorAll('img').forEach(i => i.classList.remove('border-[#67e8f9]'));
+          img.classList.add('border-[#67e8f9]');
+        };
+        grid.appendChild(img);
+      });
+    }
+
+    // Default show humanMale on load (after DOM)
+    setTimeout(() => {
+      const grid = document.getElementById('avatar-grid');
+      if (grid) showAvatarCategory('humanMale');
+    }, 300);
+
+
+
+
+    let currentRoomId = null;
+    let isAdmin = false;
+    let currentPartner = null;
+    let clientId = localStorage.getItem('vie_client_id');
+    if (!clientId) {
+      clientId = 'client_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem('vie_client_id', clientId);
+    }
+
+    function getStoredRoomId() {
+      return localStorage.getItem('vie_active_room_id') || currentRoomId;
+    }
+
+    function rememberRoom(roomId) {
+      if (roomId) localStorage.setItem('vie_active_room_id', roomId);
+    }
+
+    function forgetRoom() {
+      localStorage.removeItem('vie_active_room_id');
+    }
+
+    function identifyClient() {
+      socket.emit('client-ready', {
+        clientId,
+        roomId: getStoredRoomId()
+      });
+    }
+
+    // Tailwind script
+    function initTailwind() {
+      document.documentElement.style.setProperty('--accent', '20 184 166');
+    }
+
+    // Toast helper
+    function showToast(msg, ms = 2400) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      el.classList.add('flex', 'items-center');
+      setTimeout(() => {
+        el.classList.add('hidden');
+        el.classList.remove('flex');
+      }, ms);
+    }
+
+    // Select gender - works with new rebuilt landing
+    function selectGender(gender) {
+      currentUser.gender = gender;
+      
+      const male = document.getElementById('gender-male');
+      const female = document.getElementById('gender-female');
+      if (male) male.classList.remove('active', 'border-teal-500');
+      if (female) female.classList.remove('active', 'border-teal-500');
+      
+      const el = document.getElementById(`gender-${gender}`);
+      if (el) el.classList.add('active', 'border-teal-500');
+    }
+
+    function selectLookingFor(lf) {
+      currentUser.lookingFor = lf;
+      
+      ['look-male', 'look-female', 'look-both'].forEach(id => {
+        const e = document.getElementById(id);
+        if (e) e.classList.remove('active', 'border-teal-500');
+      });
+      
+      const key = (lf === 'both') ? 'both' : lf;
+      const activeEl = document.getElementById(`look-${key}`);
+      if (activeEl) activeEl.classList.add('active', 'border-teal-500');
+    }
+
+    // Interests
+    function addInterest() {
+      const input = document.getElementById('interest-input');
+      const val = input.value.trim();
+      if (!val || currentUser.interests.length >= 3) return;
+
+      currentUser.interests.push(val);
+      renderInterests();
+      input.value = '';
+    }
+
+    function renderInterests() {
+      const container = document.getElementById('interest-chips');
+      container.innerHTML = '';
+      currentUser.interests.forEach((tag, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'ln-chip inline-flex items-center gap-1 px-3 py-0.5 rounded-full';
+        chip.innerHTML = `${tag} <span onclick="removeInterest(${idx})" class="cursor-pointer ml-1 opacity-70 hover:opacity-100">×</span>`;
+        container.appendChild(chip);
+      });
+    }
+
+    function removeInterest(idx) {
+      currentUser.interests.splice(idx, 1);
+      renderInterests();
+    }
+
+    function loadAppLinks() {
+      appLinks.fanpage = localStorage.getItem('vie_fanpage') || '';
+      appLinks.confession = localStorage.getItem('vie_confession') || '';
+      appLinks.adminFb = localStorage.getItem('vie_admin_fb') || '';
+    }
+
+    function renderInfoBox() {
+      const content = document.getElementById('info-content');
+      if (!content) return;
+      let html = '';
+      if (isAdmin) {
+        html = `
+          <input id="admin-fanpage" class="w-full text-xs bg-slate-800 border border-slate-600 rounded px-2 py-1 mb-1" value="${appLinks.fanpage}" placeholder="Fanpage link">
+          <input id="admin-confession" class="w-full text-xs bg-slate-800 border border-slate-600 rounded px-2 py-1 mb-1" value="${appLinks.confession}" placeholder="Confession link">
+          <input id="admin-adminfb" class="w-full text-xs bg-slate-800 border border-slate-600 rounded px-2 py-1 mb-1" value="${appLinks.adminFb}" placeholder="Admin FB link">
+          <button onclick="saveAppLinks()" class="text-xs px-3 py-1 bg-teal-600 rounded mt-1">Lưu</button>
+        `;
+      } else {
+        if (appLinks.fanpage) html += `<a href="${appLinks.fanpage}" target="_blank" class="block text-teal-300 hover:underline">📘 Fanpage</a>`;
+        if (appLinks.confession) html += `<a href="${appLinks.confession}" target="_blank" class="block text-teal-300 hover:underline">💌 Confession</a>`;
+        if (appLinks.adminFb) html += `<a href="${appLinks.adminFb}" target="_blank" class="block text-teal-300 hover:underline">👤 Admin FB</a>`;
+        if (!html) html = '<span class="text-xs text-slate-400">Chưa có thông tin.</span>';
+      }
+      content.innerHTML = html;
+    }
+
+    function saveAppLinks() {
+      if (!isAdmin) return;
+      appLinks.fanpage = document.getElementById('admin-fanpage').value.trim();
+      appLinks.confession = document.getElementById('admin-confession').value.trim();
+      appLinks.adminFb = document.getElementById('admin-adminfb').value.trim();
+      localStorage.setItem('vie_fanpage', appLinks.fanpage);
+      localStorage.setItem('vie_confession', appLinks.confession);
+      localStorage.setItem('vie_admin_fb', appLinks.adminFb);
+      renderInfoBox();
+      showToast('Đã lưu thông tin');
+    }
+
+    function initRightAnimation() {
+      const canvas = document.getElementById('right-animation');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      for (let i = 0; i < 12; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: (Math.random() - 0.5) * 0.8,
+          r: Math.random() * 2.5 + 1.5
+        });
+      }
+      function draw() {
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.35)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = '#14b8a6';
+        for (let p of particles) {
+          ctx.fillStyle = '#67e8f9';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+          p.x += p.vx; p.y += p.vy;
+          if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+          if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+        }
+        ctx.strokeStyle = 'rgba(20, 184, 166, 0.35)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const dx = particles[i].x - particles[j].x;
+            const dy = particles[i].y - particles[j].y;
+            const d = Math.sqrt(dx*dx + dy*dy);
+            if (d < 90) {
+              ctx.beginPath();
+              ctx.moveTo(particles[i].x, particles[i].y);
+              ctx.lineTo(particles[j].x, particles[j].y);
+              ctx.stroke();
+            }
+          }
+        }
+        ctx.shadowBlur = 0;
+        requestAnimationFrame(draw);
+      }
+      draw();
+    }
+
+    // Start searching for match
+    function startSearching() {
+      if (!currentUser.gender) {
+        showToast("Hãy chọn giới tính của bạn");
+        return;
+      }
+      if (!currentUser.lookingFor) {
+        showToast("Hãy chọn người muốn trò chuyện");
+        return;
+      }
+
+      // Switch to waiting (rebuilt)
+      const land = document.getElementById('screen-landing');
+      const wait = document.getElementById('screen-waiting');
+      const chat = document.getElementById('screen-chat');
+      if (land) { land.classList.add('hidden'); land.style.display = 'none'; }
+      if (wait) { wait.classList.remove('hidden'); wait.style.display = ''; }
+      if (chat) chat.classList.add('hidden');
+
+      document.body.classList.remove('show-landing', 'chat-fullscreen');
+      document.body.style.background = '#0a0c1f';
+      const mc1 = document.getElementById('main-container'); if (mc1) { mc1.style.padding='0'; mc1.style.maxWidth='100%'; mc1.style.background='transparent'; }
+
+      const nameInput = document.getElementById('display-name');
+      const customName = nameInput ? nameInput.value.trim() : '';
+      currentUser.name = customName || null;
+      if (selectedAvatarUrl) currentUser.avatarUrl = selectedAvatarUrl;
+
+      socket.emit('find-stranger', {
+        clientId,
+        gender: currentUser.gender,
+        lookingFor: currentUser.lookingFor,
+        interests: currentUser.interests,
+        name: customName,
+        avatarUrl: currentUser.avatarUrl
+      });
+    }
+
+    function cancelSearch() {
+      const wait = document.getElementById('screen-waiting');
+      const land = document.getElementById('screen-landing');
+      const chat = document.getElementById('screen-chat');
+      if (wait) { wait.classList.add('hidden'); wait.style.display = 'none'; }
+      if (land) { land.classList.remove('hidden'); land.style.display = ''; }
+      if (chat) chat.classList.add('hidden');
+
+      document.body.classList.add('show-landing');
+      document.body.classList.remove('chat-fullscreen');
+      document.body.style.background = '#0a0c1f';
+      const mc2 = document.getElementById('main-container'); if (mc2) { mc2.style.padding='0'; mc2.style.maxWidth='100%'; mc2.style.background='transparent'; }
+    }
+
+    function setPartnerPresence(isOnline) {
+      const statusEl = document.getElementById('partner-status');
+      if (!statusEl || !currentPartner) return;
+
+      const genderLabel = currentPartner.gender === 'male'
+        ? 'Nam'
+        : (currentPartner.gender === 'female' ? 'Nu' : '');
+
+      statusEl.textContent = isOnline
+        ? (genderLabel ? `Dang hoat dong - ${genderLabel}` : 'Dang hoat dong')
+        : (genderLabel ? `Offline - ${genderLabel}` : 'Offline');
+
+      statusEl.className = isOnline
+        ? 'text-[12px] text-emerald-300 flex items-center gap-1'
+        : 'text-[12px] text-amber-300 flex items-center gap-1';
+    }
+
+    function enterChatSession(data, resumed = false) {
+      currentRoomId = data.roomId;
+      currentPartner = data.partner || {};
+      rememberRoom(currentRoomId);
+
+      const land = document.getElementById('screen-landing');
+      const wait = document.getElementById('screen-waiting');
+      const chat = document.getElementById('screen-chat');
+      if (land) { land.classList.add('hidden'); land.style.display = 'none'; }
+      if (wait) { wait.classList.add('hidden'); wait.style.display = 'none'; }
+      if (chat) { chat.classList.remove('hidden'); chat.style.display = ''; }
+
+      document.body.classList.remove('show-landing');
+      document.body.classList.add('chat-fullscreen');
+      document.body.style.background = '#0a0c1f';
+      document.documentElement.style.overflow = 'hidden';
+
+      const siteHeader = document.querySelector('header');
+      if (siteHeader) siteHeader.style.display = 'none';
+
+      setTimeout(() => {
+        const shell = document.querySelector('#screen-chat .chat-shell');
+        const msgs = document.getElementById('messages-container');
+        if (shell) shell.style.height = '100vh';
+        if (msgs) {
+          msgs.style.flex = '1 1 0%';
+          msgs.style.minHeight = '0';
+        }
+      }, 50);
+
+      document.getElementById('partner-name').textContent = currentPartner.username || 'Nguoi la';
+
+      const avatarEl = document.getElementById('partner-avatar');
+      let partnerAvatar = currentPartner.avatarUrl;
+      if (!partnerAvatar) {
+        const seed = encodeURIComponent(currentPartner.name || currentPartner.username || 'stranger');
+        partnerAvatar = currentPartner.gender === 'male'
+          ? `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`
+          : `https://api.dicebear.com/7.x/lorelei/svg?seed=${seed}`;
+      }
+      avatarEl.innerHTML = `<img src="${partnerAvatar}" class="w-full h-full object-cover" style="background:#1a1a2e" />`;
+
+      setPartnerPresence(currentPartner.online !== false);
+
+      const msgContainer = document.getElementById('messages-container');
+      msgContainer.innerHTML = '';
+      seenMessageIds.clear();
+
+      if (data.history && Array.isArray(data.history)) {
+        data.history.forEach(m => {
+          if (m.id) seenMessageIds.add(m.id);
+          addMessageToChat({
+            id: m.id,
+            text: m.text,
+            timestamp: m.timestamp,
+            isSelf: m.senderClientId ? (m.senderClientId === clientId) : !(
+              m.sender === currentPartner.username || m.sender === currentPartner.name
+            )
+          });
+        });
+      }
+
+      lastSentText = '';
+      applyBubbleStyle();
+
+      if (resumed) {
+        addSystemMessage('Da khoi phuc phong chat. Tin nhan cu van duoc giu lai.');
+      }
+    }
+
+    // When a match is found
+    socket.on('match-found', (data) => {
+      enterChatSession(data, false);
+      return;
+      currentRoomId = data.roomId;
+      currentPartner = data.partner;
+
+      const land = document.getElementById('screen-landing');
+      const wait = document.getElementById('screen-waiting');
+      const chat = document.getElementById('screen-chat');
+      if (land) { land.classList.add('hidden'); land.style.display = 'none'; }
+      if (wait) { wait.classList.add('hidden'); wait.style.display = 'none'; }
+      if (chat) { chat.classList.remove('hidden'); chat.style.display = ''; }
+
+      document.body.classList.remove('show-landing');
+      document.body.classList.add('chat-fullscreen');
+      document.body.style.background = '#0a0c1f';
+      document.documentElement.style.overflow = 'hidden';
+
+      // Hide main site header for clean full chat view
+      const siteHeader = document.querySelector('header');
+      if (siteHeader) siteHeader.style.display = 'none';
+
+      // Force chat layout height so messages area + input are visible
+      setTimeout(() => {
+        const shell = document.querySelector('#screen-chat .chat-shell');
+        const msgs = document.getElementById('messages-container');
+        if (shell) shell.style.height = '100vh';
+        if (msgs) {
+          msgs.style.flex = '1 1 0%';
+          msgs.style.minHeight = '0';
+        }
+      }, 50);
+
+      // Setup full-screen chat header (unchanged UI)
+      document.getElementById('partner-name').textContent = currentPartner.username || 'Người lạ';
+
+      // Use partner's chosen avatar if provided, else fallback based on their gender
+      const avatarEl = document.getElementById('partner-avatar');
+      let partnerAvatar = currentPartner.avatarUrl;
+      if (!partnerAvatar) {
+        const seed = encodeURIComponent(currentPartner.name || currentPartner.username || 'stranger');
+        partnerAvatar = currentPartner.gender === 'male'
+          ? `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`
+          : `https://api.dicebear.com/7.x/lorelei/svg?seed=${seed}`;
+      }
+      avatarEl.innerHTML = `<img src="${partnerAvatar}" class="w-full h-full object-cover" style="background:#1a1a2e" />`;
+
+      // Update status text + show partner's gender
+      const statusEl = document.getElementById('partner-status');
+      const g = currentPartner.gender;
+      const genderLabel = g === 'male' ? 'Nam' : (g === 'female' ? 'Nữ' : '');
+      if (statusEl) statusEl.textContent = genderLabel ? `Đang hoạt động • ${genderLabel}` : 'Đang hoạt động';
+
+      // Render saved history if any (preserved messages)
+      const msgContainer = document.getElementById('messages-container');
+      msgContainer.innerHTML = '';
+      if (data.history && Array.isArray(data.history)) {
+        data.history.forEach(m => {
+          addMessageToChat({
+            text: m.text,
+            timestamp: m.timestamp,
+            isSelf: (m.sender === currentPartner.username || m.sender === currentPartner.name) ? false : true
+          });
+        });
+      }
+
+      seenMessageIds.clear();
+      lastSentText = '';
+      applyBubbleStyle();
+
+      // No system welcome text to keep clean full-screen UI like reference
+    });
+
+    socket.on('room-resumed', (data) => {
+      enterChatSession(data, true);
+    });
+
+    socket.on('partner-online', () => {
+      if (!currentRoomId) return;
+      if (currentPartner) currentPartner.online = true;
+      setPartnerPresence(true);
+      addSystemMessage('Nguoi kia da online lai.');
+    });
+
+    // Receive message
+    const seenMessageIds = new Set();
+    let lastSentText = '';
+
+    socket.on('new-message', (msg) => {
+      // Admin spectator view
+      if (msg.isSpectator && isAdmin) {
+        const area = document.getElementById('admin-snoop-area');
+        if (area && window.currentSnoopRoom) {
+          const p = document.createElement('div');
+          p.className = 'text-emerald-300 mb-0.5';
+          p.textContent = `${msg.sender || '??'}: ${msg.text}`;
+          area.appendChild(p);
+          area.scrollTop = area.scrollHeight;
+        }
+        return;
+      }
+
+      // If marked as self, skip. Own messages are added optimistically on the right via sendMessage().
+      // This prevents any duplicate from server echoes.
+      if (msg.isSelf) {
+        return;
+      }
+
+      if (msg.id && seenMessageIds.has(msg.id)) {
+        return; // dedup - prevent any duplicate deliveries
+      }
+      if (msg.id) seenMessageIds.add(msg.id);
+
+      addMessageToChat(msg);
+    });
+
+    const chatThemes = [
+      { id: 'default', name: 'Mặc định', a: '#14b8a6', b: '#f43f5e' },
+      { id: 'violet', name: 'Đêm tím', a: '#8b5cf6', b: '#ec4899' },
+      { id: 'ocean', name: 'Biển xanh', a: '#06b6d4', b: '#2563eb' },
+      { id: 'sakura', name: 'Hoa hồng', a: '#fb7185', b: '#f9a8d4' },
+      { id: 'mint', name: 'Bạc hà', a: '#34d399', b: '#10b981' },
+      { id: 'sunset', name: 'Hoàng hôn', a: '#f97316', b: '#ef4444' },
+      { id: 'cyber', name: 'Điện tử', a: '#22d3ee', b: '#0f172a' }
+    ];
+
+    const bubbleStyles = [
+      { id: 'default', name: 'Mặc định', preview: 'Chào' },
+      { id: 'glass', name: 'Kính mờ', preview: 'Kính' },
+      { id: 'heart', name: 'Tim hồng', preview: 'Yêu' },
+      { id: 'cloud', name: 'Mây xanh', preview: 'Mây' },
+      { id: 'ribbon', name: 'Ruy băng', preview: 'Ruy' },
+      { id: 'neon', name: 'Neon', preview: 'Neon' },
+      { id: 'soft', name: 'Kẹo mềm', preview: 'Mềm' },
+      { id: 'like', name: 'Thích', preview: 'Hay' }
+    ];
+
+    let currentBubbleStyle = localStorage.getItem('vie_bubble_style') || 'default';
+
+    let appLinks = {
+      fanpage: localStorage.getItem('vie_fanpage') || '',
+      confession: localStorage.getItem('vie_confession') || '',
+      adminFb: localStorage.getItem('vie_admin_fb') || ''
+    };
+    currentBubbleStyle = ({ classic: 'default', cute: 'soft', stylish: 'neon', playful: 'glass' }[currentBubbleStyle]) || currentBubbleStyle;
+    let currentChatTheme = localStorage.getItem('vie_chat_theme') || 'default';
+
+    function applyChatTheme() {
+      document.body.dataset.chatTheme = currentChatTheme;
+      renderStylePicker();
+    }
+
+    function applyBubbleStyle() {
+      renderStylePicker();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function renderStylePicker() {
+      const themeGrid = document.getElementById('theme-grid');
+      const bubbleGrid = document.getElementById('bubble-grid');
+      if (!themeGrid || !bubbleGrid) return;
+
+      themeGrid.innerHTML = chatThemes.map(theme => `
+        <button onclick="selectChatTheme('${theme.id}')" class="picker-card ${theme.id === currentChatTheme ? 'active' : ''} rounded-2xl p-3 text-left">
+          <div class="theme-dot h-9 rounded-xl mb-2" style="--a:${theme.a};--b:${theme.b}"></div>
+          <div class="text-xs font-semibold">${theme.name}</div>
+        </button>
+      `).join('');
+
+      bubbleGrid.innerHTML = bubbleStyles.map(style => `
+        <button onclick="selectBubbleStyle('${style.id}')" class="picker-card ${style.id === currentBubbleStyle ? 'active' : ''} rounded-2xl p-3 text-left">
+          <div class="bubble-preview mb-2">
+            <div class="bubble self ${style.id} text-xs">${style.preview}</div>
+          </div>
+          <div class="text-xs font-semibold text-center">${style.name}</div>
+        </button>
+      `).join('');
+    }
+
+    function addMessageToChat(msg) {
+      const container = document.getElementById('messages-container');
+      const wrapper = document.createElement('div');
+
+      const time = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const isSelf = !!msg.isSelf;
+
+      wrapper.className = `w-full`;
+      const bubbleClasses = `bubble ${isSelf ? 'self' : 'other'} ${currentBubbleStyle || 'default'}`;
+
+      wrapper.innerHTML = `
+        <div class="${bubbleClasses}">
+          <div>${escapeHtml(msg.text)}</div>
+          <div class="bubble-time">${time}</div>
+        </div>
+      `;
+
+      container.appendChild(wrapper);
+      container.scrollTop = container.scrollHeight;
+
+      if (!isSelf) {
+        playMessageSound();
+      }
+    }
+
+    // Simple Web Audio API sound for new messages (no external files needed)
+    let audioContext;
+    function playMessageSound() {
+      try {
+        if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const filter = audioContext.createBiquadFilter();
+
+        osc.type = 'sine';
+        osc.frequency.value = 720;
+        filter.type = 'lowpass';
+        filter.frequency.value = 900;
+
+        gain.gain.value = 0.08;
+
+        const gain2 = audioContext.createGain();
+        gain2.gain.value = 0.3;
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(gain2);
+        gain2.connect(audioContext.destination);
+
+        osc.start();
+        setTimeout(() => {
+          gain.gain.linearRampToValueAtTime(0.0001, audioContext.currentTime + 0.25);
+          setTimeout(() => osc.stop(), 300);
+        }, 80);
+      } catch (e) {}
+    }
+
+    function addSystemMessage(text) {
+      const container = document.getElementById('messages-container');
+      const div = document.createElement('div');
+      div.className = 'text-center';
+      div.innerHTML = `<div class="inline-block text-xs px-4 py-1 bg-slate-800 rounded-full text-slate-400">${text}</div>`;
+      container.appendChild(div);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('message-input');
+      const text = input.value.trim();
+      if (!text || !currentRoomId) return;
+
+      // Optimistic UI: immediately show own message on the RIGHT (to ensure correct side and avoid waiting for server)
+      const fakeMsg = {
+        id: 'local-' + Date.now(),
+        text: text,
+        senderClientId: clientId,
+        timestamp: Date.now(),
+        isSelf: true
+      };
+      addMessageToChat(fakeMsg);
+
+      socket.emit('send-message', { roomId: currentRoomId, message: text });
+      input.value = '';
+    }
+
+    // Typing indicator
+    let typingTimeout = null;
+
+    function setupTyping() {
+      const input = document.getElementById('message-input');
+      input.addEventListener('input', () => {
+        if (!currentRoomId) return;
+        socket.emit('typing', { roomId: currentRoomId });
+        
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+          socket.emit('stop-typing', { roomId: currentRoomId });
+        }, 1500);
+      });
+    }
+
+    socket.on('typing', (data) => {
+      const ind = document.getElementById('typing-indicator');
+      if (!ind) return;
+      ind.textContent = `${data.username} đang nhập...`;
+      ind.classList.remove('hidden');
+    });
+
+    socket.on('stop-typing', () => {
+      const ind = document.getElementById('typing-indicator');
+      if (ind) ind.classList.add('hidden');
+    });
+
+    // Leave current chat
+    function leaveChat() {
+      if (confirm('Rời phòng chat này?')) {
+        socket.emit('leave-chat', { roomId: currentRoomId });
+        document.body.classList.remove('chat-fullscreen');
+        document.documentElement.style.overflow = '';
+        const shell = document.querySelector('#screen-chat .chat-shell');
+        if (shell) shell.style.height = '';
+        goBackToLanding();
+      }
+    }
+
+    // Next person (quick rematch)
+    function nextPerson() {
+      if (confirm('Kết thúc cuộc trò chuyện và tìm người mới?')) {
+        socket.emit('next-person', {
+          clientId,
+          gender: currentUser.gender,
+          lookingFor: currentUser.lookingFor,
+          interests: currentUser.interests
+        });
+        goToWaiting();
+      }
+    }
+
+    function goToWaiting() {
+      const chat = document.getElementById('screen-chat');
+      const land = document.getElementById('screen-landing');
+      const wait = document.getElementById('screen-waiting');
+      if (chat) { chat.classList.add('hidden'); chat.style.display = 'none'; }
+      if (land) { land.classList.add('hidden'); land.style.display = 'none'; }
+      if (wait) { wait.classList.remove('hidden'); wait.style.display = ''; }
+      document.body.classList.remove('chat-fullscreen');
+      document.body.style.background = '#0a0c1f';
+      document.documentElement.style.overflow = '';
+      const siteHeader = document.querySelector('header');
+      if (siteHeader) siteHeader.style.display = '';
+      forgetRoom();
+      currentRoomId = null;
+    }
+
+    function goBackToLanding() {
+      const chat = document.getElementById('screen-chat');
+      const wait = document.getElementById('screen-waiting');
+      const land = document.getElementById('screen-landing');
+      if (chat) { chat.classList.add('hidden'); chat.style.display = 'none'; }
+      if (wait) { wait.classList.add('hidden'); wait.style.display = 'none'; }
+      if (land) { land.classList.remove('hidden'); land.style.display = ''; }
+      document.body.classList.remove('chat-fullscreen');
+      document.body.classList.add('show-landing');
+      document.body.style.background = '#0a0c1f';
+      document.body.style.overflow = 'auto';
+      document.documentElement.style.overflow = 'auto';
+      const siteHeader = document.querySelector('header');
+      if (siteHeader) siteHeader.style.display = '';
+      const mc3 = document.getElementById('main-container'); if (mc3) { mc3.style.padding='0'; mc3.style.maxWidth='100%'; mc3.style.background='transparent'; }
+      forgetRoom();
+      currentRoomId = null;
+      currentPartner = null;
+    }
+
+    function reportCurrentUser() {
+      if (!currentRoomId || !currentPartner) return;
+      const reason = prompt('Lý do báo cáo? (có thể bỏ trống)', '');
+      if (reason === null) return; // cancelled
+
+      socket.emit('report-user', { roomId: currentRoomId, reason: reason.trim() });
+      showToast('Đã gửi báo cáo.');
+    }
+
+    socket.on('report-received', () => {
+      showToast('Đã ghi nhận báo cáo.');
+    });
+
+    function showMatchingInfo() {
+      document.getElementById('matching-info-modal').classList.remove('hidden');
+      document.getElementById('matching-info-modal').classList.add('flex');
+    }
+
+    function hideMatchingInfo() {
+      const modal = document.getElementById('matching-info-modal');
+      modal.classList.remove('flex');
+      modal.classList.add('hidden');
+    }
+
+    function showBubbleStylePicker() {
+      const modal = document.getElementById('style-picker-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function showChatInfoPanel() {
+      const selfName = currentUser.name || 'Bạn';
+      const selfGender = currentUser.gender === 'male' ? 'Nam' : (currentUser.gender === 'female' ? 'Nữ' : 'Chưa chọn');
+      let selfAvatar = currentUser.avatarUrl;
+      if (!selfAvatar) {
+        const seed = encodeURIComponent(selfName);
+        selfAvatar = currentUser.gender === 'male'
+          ? `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`
+          : `https://api.dicebear.com/7.x/lorelei/svg?seed=${seed}`;
+      }
+
+      const partnerName = currentPartner ? (currentPartner.name || currentPartner.username || 'Đối phương') : 'Đối phương';
+      const partnerGender = currentPartner ? (currentPartner.gender === 'male' ? 'Nam' : (currentPartner.gender === 'female' ? 'Nữ' : '')) : '';
+      let partnerAvatar = currentPartner && currentPartner.avatarUrl;
+      if (!partnerAvatar && currentPartner) {
+        const seed = encodeURIComponent(partnerName);
+        partnerAvatar = currentPartner.gender === 'male'
+          ? `https://api.dicebear.com/7.x/adventurer/svg?seed=${seed}`
+          : `https://api.dicebear.com/7.x/lorelei/svg?seed=${seed}`;
+      } else if (!partnerAvatar) {
+        partnerAvatar = 'https://api.dicebear.com/7.x/adventurer-neutral/svg?seed=partner';
+      }
+
+      const panel = document.createElement('div');
+      panel.className = 'fixed inset-0 bg-black/70 flex items-center justify-center z-[130]';
+      panel.innerHTML = `
+        <div class="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-sm w-full mx-3">
+          <div class="flex justify-between mb-4">
+            <div class="font-semibold">Thông tin cuộc trò chuyện</div>
+            <button onclick="this.closest('.fixed').remove()" class="text-2xl leading-none">×</button>
+          </div>
+          <div class="space-y-4 text-sm">
+            <div>
+              <div class="text-[#64748b] mb-1">BẠN</div>
+              <div class="flex items-center gap-3">
+                <img src="${selfAvatar}" class="w-12 h-12 rounded-full bg-slate-800" />
+                <div>
+                  <div>${selfName}</div>
+                  <div class="text-xs text-[#94a3b8]">${selfGender}</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="text-[#64748b] mb-1">ĐỐI PHƯƠNG</div>
+              <div class="flex items-center gap-3">
+                <img src="${partnerAvatar}" class="w-12 h-12 rounded-full bg-slate-800" />
+                <div>
+                  <div>${partnerName}</div>
+                  <div class="text-xs text-[#94a3b8]">${partnerGender}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mt-5 text-right">
+            <button onclick="this.closest('.fixed').remove()" class="px-4 py-1 text-xs rounded-xl bg-slate-700">Đóng</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(panel);
+    }
+
+    function hideBubbleStylePicker() {
+      const modal = document.getElementById('style-picker-modal');
+      modal.classList.remove('flex');
+      modal.classList.add('hidden');
+    }
+
+    function selectBubbleStyle(style) {
+      currentBubbleStyle = style;
+      localStorage.setItem('vie_bubble_style', style);
+      applyBubbleStyle();
+      showToast('Đã đổi bong bóng');
+    }
+
+    function selectChatTheme(theme) {
+      currentChatTheme = theme;
+      localStorage.setItem('vie_chat_theme', theme);
+      applyChatTheme();
+      showToast('Đã đổi theme');
+    }
+
+    // Icebreaker
+    function sendIcebreaker() {
+      if (!currentRoomId) return;
+      const breakers = [
+        "Tuần này có chuyện gì vui nhất với bạn?",
+        "Nếu được giỏi ngay một thứ, bạn chọn gì?",
+        "Có bộ phim hoặc series nào bạn muốn giới thiệu không?",
+        "Dạo này bạn đang mê điều gì nhất?",
+        "Nếu đi du lịch ngay bây giờ, bạn muốn đến đâu?"
+      ];
+      const msg = breakers[Math.floor(Math.random() * breakers.length)];
+      
+      const input = document.getElementById('message-input');
+      input.value = msg;
+      sendMessage();
+    }
+
+    function sendReaction(emoji) {
+      if (!currentRoomId) return;
+      addMessageToChat({
+        id: 'local-reaction-' + Date.now(),
+        text: emoji,
+        timestamp: Date.now(),
+        isSelf: true
+      });
+      socket.emit('send-message', { roomId: currentRoomId, message: emoji });
+    }
+
+    // Socket events for flow control
+    socket.on('waiting', (data) => {
+      document.getElementById('waiting-text').textContent = data.message || 'Đang tìm người phù hợp...';
+    });
+
+    socket.on('partner-offline', () => {
+      if (currentPartner) currentPartner.online = false;
+      setPartnerPresence(false);
+      addSystemMessage('Người kia đã offline (không rời phòng). Tin nhắn vẫn được lưu.');
+    });
+
+    socket.on('partner-left', (data) => {
+      forgetRoom();
+      addSystemMessage('Người kia đã rời phòng.');
+      setTimeout(() => {
+        const rating = prompt('Đánh giá nhanh cuộc chat này? (1-5, có thể bỏ trống)', '');
+        if (rating) {
+          console.log('[FEEDBACK] Chat rating:', rating);
+        }
+        if (confirm('Bạn muốn tìm người mới không?')) {
+          startSearching();
+        } else {
+          goBackToLanding();
+        }
+      }, 900);
+    });
+
+    socket.on('left-chat', () => {
+      goBackToLanding();
+    });
+
+    socket.on('auto-search', (prefs) => {
+      const c = document.getElementById('screen-chat');
+      const l = document.getElementById('screen-landing');
+      const w = document.getElementById('screen-waiting');
+      if (c) { c.classList.add('hidden'); c.style.display = 'none'; }
+      if (l) { l.classList.add('hidden'); l.style.display = 'none'; }
+      if (w) { w.classList.remove('hidden'); w.style.display = ''; }
+      document.body.style.background = '#0a0c1f';
+      
+      // Re-emit with previous prefs
+      socket.emit('find-stranger', prefs);
+    });
+
+    socket.on('error', (err) => {
+      showToast(err.message || 'Có lỗi xảy ra');
+    });
+
+    // Stats from server
+    socket.on('stats-update', (stats) => {
+      // Header ids
+      const onlines = document.querySelectorAll('#online-count');
+      onlines.forEach(el => el.textContent = stats.online || 0);
+
+      const actives = document.querySelectorAll('#active-chats');
+      actives.forEach(el => el.innerHTML = `<span class="font-semibold text-white">${stats.activeChats || 0}</span> đang chat`);
+
+      // Landing dedicated ids (new rebuilt)
+      const lOn = document.getElementById('landing-online-count');
+      if (lOn) lOn.textContent = stats.online || 0;
+      const lAc = document.getElementById('landing-active-count');
+      if (lAc) lAc.textContent = stats.activeChats || 0;
+
+      const waitingEl = document.getElementById('waiting-count');
+      if (waitingEl) waitingEl.textContent = stats.waiting || 0;
+    });
+
+    // ==================== ADMIN MODE ====================
+    function showAdminLogin() {
+      // Special link support
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('admin') === 'true' || window.location.hash === '#admin') {
+        promptAdminPassword();
+        return;
+      }
+
+      // Normal admin button also prompts
+      promptAdminPassword();
+    }
+
+    function promptAdminPassword() {
+      const pass = prompt('Nhập mật khẩu quản trị:');
+      if (pass === null) return;
+      socket.emit('admin-login', pass);
+    }
+
+    socket.on('admin-auth-success', () => {
+      isAdmin = true;
+      document.getElementById('admin-modal').classList.remove('hidden');
+      document.getElementById('admin-modal').classList.add('flex');
+      showToast('Đã bật chế độ quản trị');
+      renderInfoBox();
+    });
+
+    socket.on('admin-auth-failed', () => {
+      alert('Sai mật khẩu');
+    });
+
+    function closeAdminModal() {
+      document.getElementById('admin-modal').classList.remove('flex');
+      document.getElementById('admin-modal').classList.add('hidden');
+    }
+
+    socket.on('admin-data', (data) => {
+      if (!isAdmin) return;
+
+      // Update numbers
+      const onlineFromMain = parseInt(document.getElementById('online-count').textContent || '0', 10);
+      document.getElementById('admin-online').textContent = data.waitingUsers.length + onlineFromMain;
+      document.getElementById('admin-waiting').textContent = data.waitingUsers.length;
+      document.getElementById('admin-chats').textContent = data.activeRooms.length;
+      if (data.recentReports) {
+        // reports are rendered later
+      }
+
+      // Waiting list
+      const waitList = document.getElementById('admin-waiting-list');
+      waitList.innerHTML = '';
+      if (data.waitingUsers.length === 0) {
+        waitList.innerHTML = '<div class="text-xs text-slate-500 p-2">Chưa có ai đang chờ</div>';
+      } else {
+        data.waitingUsers.forEach(u => {
+          const div = document.createElement('div');
+          div.className = 'flex justify-between bg-slate-900 px-3 py-2 rounded-xl';
+          div.innerHTML = `<div><span class="font-semibold">${u.username}</span> <span class="text-xs">(${u.gender} → ${u.lookingFor})</span></div>`;
+          waitList.appendChild(div);
+        });
+      }
+
+      // Active rooms
+      const roomsList = document.getElementById('admin-rooms-list');
+      roomsList.innerHTML = '';
+      if (data.activeRooms.length === 0) {
+        roomsList.innerHTML = '<div class="text-xs text-slate-500 p-2">Chưa có phòng chat</div>';
+      } else {
+        data.activeRooms.forEach(r => {
+          const matchInfo = r.matchScore ? `<span class="text-emerald-400 ml-1">${Math.round(r.matchScore*100)}% khớp</span>` : '';
+          const div = document.createElement('div');
+          div.className = 'flex justify-between bg-slate-900 px-3 py-2 rounded-xl mb-1 items-center';
+          div.innerHTML = `
+            <div class="text-xs">
+              <span class="font-semibold">${r.userA}</span> ↔ <span class="font-semibold">${r.userB}</span><br>
+              <span class="text-teal-400">${r.duration}s</span> ${matchInfo}
+            </div>
+            <div class="flex gap-1">
+              <button onclick="adminSnoopRoom('${r.roomId}')" class="text-emerald-400 text-xs px-2 py-0.5 hover:bg-emerald-800 rounded">Theo dõi</button>
+              <button onclick="forceEndRoom('${r.roomId}')" class="text-rose-400 text-xs px-2 py-0.5 hover:bg-rose-800 rounded">Đóng</button>
+            </div>
+          `;
+          roomsList.appendChild(div);
+        });
+      }
+
+      // Recent Reports
+      const reportsList = document.getElementById('admin-reports-list');
+      reportsList.innerHTML = '';
+      if (!data.recentReports || data.recentReports.length === 0) {
+        reportsList.innerHTML = '<div class="text-xs text-slate-500 p-2">Chưa có báo cáo</div>';
+      } else {
+        data.recentReports.forEach(rep => {
+          const el = document.createElement('div');
+          el.className = 'bg-slate-900 px-3 py-1 rounded';
+          el.innerHTML = `<span class="font-semibold text-amber-400">${rep.reportedUser}</span> bị báo cáo bởi ${rep.reportedBy} — ${rep.reason || 'Không có lý do'}`;
+          reportsList.appendChild(el);
+        });
+      }
+    });
+
+    function forceEndRoom(roomId) {
+      if (confirm('Đóng phòng chat này?')) {
+        socket.emit('admin-force-end', roomId);
+      }
+    }
+
+    function adminBroadcast() {
+      const msg = prompt('Gửi thông báo tới mọi người:');
+      if (msg) socket.emit('admin-broadcast', msg);
+    }
+
+    // Admin secretly monitors a room (undetected)
+    function adminSnoopRoom(roomId) {
+      socket.emit('admin-snoop-room', roomId);
+      showToast('Đang theo dõi phòng bí mật...');
+
+      // Simple live transcript area (append-only for admin)
+      const adminModal = document.getElementById('admin-modal');
+      let snoopArea = document.getElementById('admin-snoop-area');
+      if (!snoopArea) {
+        snoopArea = document.createElement('div');
+        snoopArea.id = 'admin-snoop-area';
+        snoopArea.className = 'mt-4 bg-black/60 border border-emerald-700 rounded-2xl p-3 text-xs max-h-60 overflow-auto';
+        snoopArea.innerHTML = `<div class="text-emerald-400 mb-1 font-semibold">Đang theo dõi phòng ${roomId} (ẩn với người dùng)</div>`;
+        adminModal.querySelector('.bg-slate-900').appendChild(snoopArea);
+      }
+      window.currentSnoopRoom = roomId;
+    }
+
+    socket.on('admin-broadcast', (data) => {
+      showToast(`[QUẢN TRỊ] ${data.message}`, 6000);
+      addSystemMessage(`[THÔNG BÁO] ${data.message}`);
+    });
+
+    socket.on('admin-action', (res) => {
+      if (res.success) showToast(res.message);
+    });
+
+    socket.on('new-report', (report) => {
+      if (!isAdmin) return;
+      const reportsList = document.getElementById('admin-reports-list');
+      const el = document.createElement('div');
+      el.className = 'bg-slate-900 px-3 py-1 rounded mb-1';
+      el.innerHTML = `<span class="font-semibold text-amber-400">${report.reportedUser}</span> bị báo cáo bởi ${report.reportedBy} — ${report.reason || 'Không có lý do'}`;
+      reportsList.prepend(el);
+      showToast('Có báo cáo mới!', 3000);
+    });
+
+    // Handle snoop history + live spectator messages
+    socket.on('snoop-history', (data) => {
+      const area = document.getElementById('admin-snoop-area');
+      if (!area || !data.history) return;
+      data.history.forEach(m => {
+        const p = document.createElement('div');
+        p.className = 'text-emerald-300 mb-0.5';
+        p.textContent = `${m.sender || '??'}: ${m.text}`;
+        area.appendChild(p);
+      });
+      area.scrollTop = area.scrollHeight;
+    });
+
+    // Live messages while snooping
+    const origNewMessage = socket._listeners ? null : null; // keep original
+    // Extend new-message for spectator
+    // (we already have the listener below, we will check inside it for spectator)
+
+    // ==================== INITIALIZATION + STABILITY ====================
+    function init() {
+      initTailwind();
+      setupTyping();
+
+      // Full neon dark cover default + clean landing
+      document.body.classList.remove('chat-fullscreen');
+      document.body.classList.add('show-landing');
+      document.documentElement.style.background = '#0a0c1f';
+      document.body.style.background = '#0a0c1f';
+
+      const landing = document.getElementById('screen-landing');
+      const waiting = document.getElementById('screen-waiting');
+      if (landing) { landing.classList.remove('hidden'); landing.style.display = ''; }
+      if (waiting) { waiting.classList.add('hidden'); waiting.style.display = 'none'; }
+      const mci = document.getElementById('main-container');
+      if (mci) { mci.style.padding = '0'; mci.style.maxWidth = '100%'; mci.style.background = 'transparent'; }
+
+      // Socket.IO automatic reconnect + UI feedback for high stability
+      function updateConnectionStatus(connected) {
+        const status = document.getElementById('connection-status');
+        const text = document.getElementById('connection-text');
+        if (!status || !text) return;
+
+        if (connected) {
+          status.className = 'px-3 py-1 text-xs bg-emerald-900/30 text-emerald-400 rounded-3xl flex items-center gap-1';
+          text.textContent = 'Đã kết nối';
+        } else {
+          status.className = 'px-3 py-1 text-xs bg-rose-900/30 text-rose-400 rounded-3xl flex items-center gap-1';
+          text.textContent = 'Đang nối lại...';
+        }
+      }
+
+      socket.on('connect', () => {
+        identifyClient();
+        console.log('%c[VieConnect] Connected to server', 'color:#14b8a6');
+        updateConnectionStatus(true);
+      });
+      socket.on('disconnect', (reason) => {
+        console.warn('[VieConnect] Disconnected:', reason);
+        updateConnectionStatus(false);
+        const chat = document.getElementById('screen-chat');
+        if (!chat.classList.contains('hidden')) {
+          addSystemMessage('Mất kết nối. Đang thử kết nối lại...');
+        }
+      });
+      socket.on('reconnect_attempt', () => {
+        updateConnectionStatus(false);
+        console.log('[VieConnect] Reconnecting...');
+      });
+      socket.on('connect_error', () => {
+        updateConnectionStatus(false);
+      });
+      if (socket.connected) {
+        identifyClient();
+        updateConnectionStatus(true);
+      }
+
+      // Support direct admin link: ?admin
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('admin') !== null) {
+        setTimeout(() => {
+          const pass = prompt('Nhập mật khẩu quản trị:');
+          if (pass) socket.emit('admin-login', pass);
+        }, 700);
+      }
+
+      // Demo tip
+      setTimeout(() => {
+        const landing = document.getElementById('screen-landing');
+        if (!landing.classList.contains('hidden')) {
+          // showToast("Try opening this page in another tab/window to test real chat between two people!");
+        }
+      }, 5500);
+
+      // Keyboard shortcut hint
+      document.addEventListener('keydown', function(e) {
+        if (e.key === "/" && document.activeElement.tagName === "BODY") {
+          e.preventDefault();
+          const input = document.getElementById('message-input');
+          if (!input) return;
+          input.focus();
+        }
+      });
+
+      // Make sure landing is visible by default - fix blank/white UI on web
+      const finalLand = document.getElementById('screen-landing');
+      const finalWait = document.getElementById('screen-waiting');
+      if (finalLand) { finalLand.classList.remove('hidden'); finalLand.style.display = ''; }
+      if (finalWait) { finalWait.classList.add('hidden'); finalWait.style.display = 'none'; }
+      document.body.classList.add('show-landing');
+      document.body.style.background = '#0a0c1f';
+      document.documentElement.style.background = '#0a0c1f';
+      const mc = document.getElementById('main-container');
+      if (mc) { mc.style.maxWidth = '100%'; mc.style.padding = '0'; mc.style.margin = '0'; mc.style.background = 'transparent'; }
+      loadAppLinks();
+      renderInfoBox();
+      initRightAnimation();
+      applyChatTheme();
+      renderStylePicker();
+
+      // Preload saved bubble style preference
+      console.log('%c[VieConnect] Loaded bubble style preference:', currentBubbleStyle);
+
+      console.log('%c[VieConnect] Client initialized. Server manages real multi-user matching.', 'color:#64748b');
+    }
+
+    // Global exposure for console testing
+    window.VieConnect = { 
+      socket, 
+      forceMatch: () => console.log('Use server console or open multiple tabs')
+    };
+
+    window.onload = init;
+  </script>
+</body>
+</html>
