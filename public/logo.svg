@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 36 36" fill="none">
+  <defs>
+    <linearGradient id="hLogo" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#67e8f9"/>
+      <stop offset="50%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+  </defs>
+  <rect x="3" y="3" width="30" height="30" rx="9" fill="#0a0c1f" stroke="url(#hLogo)" stroke-width="2.5"/>
+  <path d="M12 12 L18 22 L24 12" stroke="#67e8f9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="14" cy="26" r="2.2" fill="#f472b6"/>
+  <circle cx="22" cy="26" r="2.2" fill="#67e8f9"/>
+</svg>
